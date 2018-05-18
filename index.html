@@ -51,14 +51,48 @@
             worker: true,
             complete: function(results, file) {
           	    console.log("Parsing complete:", results, file);
+                startResultEvaluation(results);
             }
         }
         var result = Papa.parse(file, config);
-        console.dir(result);
     }
 
     var startEvaluationButton = document.getElementById('startEvaluationButton');
     startEvaluationButton.onclick = function() {
         startEvaluation();
+    }
+
+    var summe = 0;
+    var logMapElements = function(value, key, map) {
+        console.log(`m[${key}] = ${value.betrag}`);
+        summe = summe + value.betrag;
+    }
+
+    var startResultEvaluation = function(result) {
+        var wknMap = new Map();
+
+        for (var row = 0; row < result.data.length; row++) {
+            // console.log(row[i]);
+
+            if (result.data[row] && result.data[row][7] && result.data[row][7] != "WKN") {
+                var wkn = result.data[row][7];
+                var betrag = parseFloat(result.data[row][28].replace(',', '.'));
+                console.log(wkn);
+
+                if (wknMap.has(wkn)) {
+                    var entry = wknMap.get(wkn);
+                    entry.betrag = entry.betrag + betrag;
+                } else {
+                    var entry = {
+                        wkn: wkn,
+                        betrag: betrag
+                    }
+                    wknMap.set(wkn, entry);
+                }
+            }
+        }
+
+        wknMap.forEach(logMapElements);
+        console.log('Summe: ', summe);
     }
 </script>
