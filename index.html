@@ -32,8 +32,8 @@
               <input type="file" class="form-control-file" id="exampleFormControlFile1"/>
           </div>
           <div class="form-group">
-              <label for="startEvaluation">Auswertung starten</label>
-              <button type="button" class="btn btn-primary" id="startEvaluation">Auswertung starten</button>
+              <label for="startEvaluationButton">Auswertung starten</label>
+              <button type="button" class="btn btn-primary" id="startEvaluationButton">Auswertung starten</button>
           </div>
       </form>
     </div>
@@ -42,9 +42,22 @@
 <script type="module">
     var startEvaluation = function() {
         console.info('Start evaluation.... it worked...');
+        var file = document.getElementById('exampleFormControlFile1').files[0];
+        var config = {
+            delitmiter: ';',
+            skipEmptyLines: true,
+            quoteChar: '"',
+            escapeChar: '"',
+            worker: true,
+            complete: function(results, file) {
+          	    console.log("Parsing complete:", results, file);
+            }
+        }
+        var result = Papa.parse(file, config);
+        console.dir(result);
     }
 
-    var startEvaluationButton = document.getElementById('startEvaluation');
+    var startEvaluationButton = document.getElementById('startEvaluationButton');
     startEvaluationButton.onclick = function() {
         startEvaluation();
     }
