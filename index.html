@@ -21,11 +21,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta charset="UTF-8">
 
-    <title>Ausschüttungssummen pro Fonds / Aktie</title>
+    <title>Ausschüttung pro Fonds / Aktie</title>
 </head>
 <body>
     <div class="container">
-      <h1>Ausschüttungssummen pro Fonds / Aktie</h1>
+      <h4>Ausschüttung pro Fonds / Aktie</h4>
       <form>
           <div class="form-group">
               <label for="exampleFormControlFile1">Export Steuerübersicht hochladen</label>
@@ -62,37 +62,78 @@
         startEvaluation();
     }
 
-    var summe = 0;
-    var logMapElements = function(value, key, map) {
-        console.log(`m[${key}] = ${value.betrag}`);
-        summe = summe + value.betrag;
+    var GesamtAusschuettung = class {
+        constructor(steuerjahr, betrag) {
+            this.steuerjahr = steuerjahr;
+            this.betrag = betrag;
+        }
+
+        key() {
+            return this.steuerjahr;
+        }
+    }
+
+    var Ausschuettung = class {
+        constructor(steuerjahr, wkn, betrag) {
+            this.steuerjahr = steuerjahr;
+            this.wkn = wkn;
+            this.betrag = betrag;
+        }
+
+        addAusschuettung(ausschuettung) {
+            this.betrag = this.betrag + ausschuettung.betrag;
+        }
+
+        key() {
+            return this.steuerjahr + "/" + this.wkn;
+        }
+
+        toString() {
+            return this.steuerjahr + ' / ' + this.wkn + " # " + this.betrag;
+        }
+    }
+
+
+    var summenMap = new Map(); // (steuerjahr, summe)
+    var sumUpAgeGroup = function(value, key, map) {
+        // console.log(`m[${value.key()}] = ${value.steuerjahr} # ${value.betrag}`);
+
+        if (summenMap.has(value.steuerjahr)) {
+            var summeSteuerjahr = summenMap.get(value.steuerjahr);
+            summeSteuerjahr = summeSteuerjahr + value.betrag;
+            summenMap.set(value.steuerjahr, summeSteuerjahr);
+        } else {
+            summenMap.set(value.steuerjahr, value.betrag);
+        }
+    }
+
+    var printIncome = function(value, key, map) {
+        console.log('Steuerjahr: ' + key + ", Summe: " + value);
     }
 
     var startResultEvaluation = function(result) {
-        var wknMap = new Map();
+        var wknMap = new Map(); // key, value = (ausschuettung.key(), ausschuettung)
 
         for (var row = 0; row < result.data.length; row++) {
-            // console.log(row[i]);
-
             if (result.data[row] && result.data[row][7] && result.data[row][7] != "WKN") {
+                var steuerjahr = result.data[row][0];
                 var wkn = result.data[row][7];
                 var betrag = parseFloat(result.data[row][28].replace(',', '.'));
-                console.log(wkn);
 
-                if (wknMap.has(wkn)) {
-                    var entry = wknMap.get(wkn);
-                    entry.betrag = entry.betrag + betrag;
+                var ausschuettung = new Ausschuettung(steuerjahr, wkn, betrag);
+                console.log(ausschuettung.toString());
+
+                if (wknMap.has(ausschuettung.key())) {
+                    var ausschuettungAlt = wknMap.get(ausschuettung.key());
+                    ausschuettungAlt.addAusschuettung(ausschuettung);
                 } else {
-                    var entry = {
-                        wkn: wkn,
-                        betrag: betrag
-                    }
-                    wknMap.set(wkn, entry);
+                    wknMap.set(ausschuettung.key(), ausschuettung);
                 }
             }
         }
 
-        wknMap.forEach(logMapElements);
-        console.log('Summe: ', summe);
+        summenMap = new Map();
+        wknMap.forEach(sumUpAgeGroup);
+        summenMap.forEach(printIncome);
     }
 </script>
