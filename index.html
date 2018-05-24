@@ -16,6 +16,8 @@
         integrity="sha384-u/bQvRA/1bobcXlcEYpsEdFVK/vJs3+T+nXLsBYJthmdBuavHvAW6UsmqO2Gd/F9"
         crossorigin="anonymous"></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.10/lodash.min.js"></script>
+
     <script src="./papaparse.min.js"></script>
 
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -94,25 +96,8 @@
     }
 
 
-    var summenMap = new Map(); // (steuerjahr, summe)
-    var sumUpAgeGroup = function(value, key, map) {
-        // console.log(`m[${value.key()}] = ${value.steuerjahr} # ${value.betrag}`);
-
-        if (summenMap.has(value.steuerjahr)) {
-            var summeSteuerjahr = summenMap.get(value.steuerjahr);
-            summeSteuerjahr = summeSteuerjahr + value.betrag;
-            summenMap.set(value.steuerjahr, summeSteuerjahr);
-        } else {
-            summenMap.set(value.steuerjahr, value.betrag);
-        }
-    }
-
-    var printIncome = function(value, key, map) {
-        console.log('Steuerjahr: ' + key + ", Summe: " + value);
-    }
-
-    var startResultEvaluation = function(result) {
-        var wknMap = new Map(); // key, value = (ausschuettung.key(), ausschuettung)
+    var groupByWkn = function(result) {
+        var wknMap = new Map(); // (key, value) = (ausschuettung.key(), ausschuettung)
 
         for (var row = 0; row < result.data.length; row++) {
             if (result.data[row] && result.data[row][7] && result.data[row][7] != "WKN") {
@@ -121,7 +106,7 @@
                 var betrag = parseFloat(result.data[row][28].replace(',', '.'));
 
                 var ausschuettung = new Ausschuettung(steuerjahr, wkn, betrag);
-                console.log(ausschuettung.toString());
+                // console.log(ausschuettung.toString());
 
                 if (wknMap.has(ausschuettung.key())) {
                     var ausschuettungAlt = wknMap.get(ausschuettung.key());
@@ -132,8 +117,42 @@
             }
         }
 
-        summenMap = new Map();
-        wknMap.forEach(sumUpAgeGroup);
+        return wknMap;
+    }
+
+    var sumUpAgeGroup = function(wknMap) {
+        var summenMap = new Map(); // (steuerjahr, summe)
+   
+        wknMap.forEach((value, key, map) => {
+            if (summenMap.has(value.steuerjahr)) {
+                var summeSteuerjahr = summenMap.get(value.steuerjahr);
+                summeSteuerjahr = summeSteuerjahr + value.betrag;
+                summenMap.set(value.steuerjahr, summeSteuerjahr);
+            } else {
+                summenMap.set(value.steuerjahr, value.betrag);
+            }
+        })
+
+        return summenMap;
+    }
+
+    var printWkn = function(value, key, map) {
+        console.log('Steuerjahr: ' + value.steuerjahr + ', WKN: ' + value.wkn + ', Betrag: ' + value.betrag);
+    }
+
+    var printIncome = function(value, key, map) {
+        console.log('Steuerjahr: ' + key + ", Summe: " + value);
+    }
+
+    var startResultEvaluation = function(result) {
+        var wknMap = groupByWkn(result);
+        var wknValues = wknMap.values();
+        var sortedWkns = _.sortBy(wknMap, function(o) {
+            return o.wkn;
+        });
+        sortedWkns.forEach(printWkn);
+
+        var summenMap = sumUpAgeGroup(wknMap);
         summenMap.forEach(printIncome);
     }
 </script>
