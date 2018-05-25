@@ -73,6 +73,10 @@
         key() {
             return this.steuerjahr;
         }
+
+        toString() {
+            return this.steuerjahr + ' / ' + this.betrag;
+        }
     }
 
     var Ausschuettung = class {
@@ -122,7 +126,7 @@
 
     var sumUpAgeGroup = function(wknMap) {
         var summenMap = new Map(); // (steuerjahr, summe)
-   
+
         wknMap.forEach((value, key, map) => {
             if (summenMap.has(value.steuerjahr)) {
                 var summeSteuerjahr = summenMap.get(value.steuerjahr);
@@ -146,10 +150,11 @@
 
     var startResultEvaluation = function(result) {
         var wknMap = groupByWkn(result);
-        var wknValues = wknMap.values();
-        var sortedWkns = _.sortBy(wknMap, function(o) {
+        // var wknValues = wknMap.values();
+        var wknValues = Array.from( wknMap.values() );
+        var sortedWkns = _.sortBy(wknValues, [function(o) {
             return o.wkn;
-        });
+        }]);
         sortedWkns.forEach(printWkn);
 
         var summenMap = sumUpAgeGroup(wknMap);
