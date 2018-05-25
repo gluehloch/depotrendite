@@ -152,9 +152,7 @@
         var wknMap = groupByWkn(result);
         // var wknValues = wknMap.values();
         var wknValues = Array.from( wknMap.values() );
-        var sortedWkns = _.sortBy(wknValues, [function(o) {
-            return o.wkn;
-        }]);
+        var sortedWkns = _.sortBy(wknValues, ['steuerjahr', 'betrag', 'wkn']);
         sortedWkns.forEach(printWkn);
 
         var summenMap = sumUpAgeGroup(wknMap);
