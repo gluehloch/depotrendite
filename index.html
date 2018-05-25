@@ -27,41 +27,80 @@
 </head>
 <body>
     <div class="container">
-      <h4>Ausschüttung pro Fonds / Aktie</h4>
-      <form>
-          <div class="form-group">
-              <label for="exampleFormControlFile1">Export Steuerübersicht hochladen</label>
-              <input type="file" class="form-control-file" id="exampleFormControlFile1"/>
-          </div>
-          <div class="form-group">
-              <label for="startEvaluationButton">Auswertung starten</label>
-              <button type="button" class="btn btn-primary" id="startEvaluationButton">Auswertung starten</button>
-          </div>
-      </form>
+        <h4>Ausschüttung pro Fonds / Aktie</h4>
+        <form>
+            <div class="form-group">
+                <label for="depotuebersichtInputFile">Depotdaten hochladen</label>
+                <input type="file" class="form-control-file" id="depotuebersichtInputFile"/>
+            </div>
+            <div class="form-group">
+                <label for="startEvaluationDepotdatenButton">Auswertung starten</label>
+                <button type="button" class="btn btn-primary" id="startEvaluationDepotdatenButton">Depotdaten importieren</button>
+            </div>
+            <hr />
+            <div class="form-group">
+                <label for="steueruebersichtInputFile">Export Steuerdaten hochladen</label>
+                <input type="file" class="form-control-file" id="steueruebersichtInputFile"/>
+            </div>
+            <div class="form-group">
+                <label for="startEvaluationSteuerdatenButton">Auswertung starten</label>
+                <button type="button" class="btn btn-primary" id="startEvaluationSteuerdatenButton">Steuerdaten importieren</button>
+            </div>
+        </form>
     </div>
 </body>
 
 <script type="module">
-    var startEvaluation = function() {
-        console.info('Start evaluation.... it worked...');
-        var file = document.getElementById('exampleFormControlFile1').files[0];
-        var config = {
+    var toNumber = function(numberAsString) {
+        'use strict';
+        numberAsString = numberAsString.replace(/\./g, '').replace(',', '.');
+        return parseFloat(numberAsString);
+    }
+
+    var startEvaluationSteuerdatenButton = document.getElementById('startEvaluationSteuerdatenButton');
+    startEvaluationSteuerdatenButton.onclick = function() {
+        startEvaluationSteuerdaten();
+    }
+
+    var startEvaluationDepotdatenButton = document.getElementById('startEvaluationDepotdatenButton');
+    startEvaluationDepotdatenButton.onclick = function() {
+        startEvaluationDepotdaten();
+    }
+
+    var startEvaluationDepotdaten = function() {
+        console.info('Start evaluation Depotdaten ...');
+        var depotuebersicht = document.getElementById('depotuebersichtInputFile').files[0];
+
+        var configDepotuebersicht = {
             delitmiter: ';',
             skipEmptyLines: true,
             quoteChar: '"',
             escapeChar: '"',
             worker: true,
-            complete: function(results, file) {
-          	    console.log("Parsing complete:", results, file);
-                startResultEvaluation(results);
+            complete: function(results, depotuebersicht) {
+                console.log("Parsing complete:", results, depotuebersicht);
+                parseDepotuebersicht(results);
             }
         }
-        var result = Papa.parse(file, config);
+        var result = Papa.parse(depotuebersicht, configDepotuebersicht);        
     }
 
-    var startEvaluationButton = document.getElementById('startEvaluationButton');
-    startEvaluationButton.onclick = function() {
-        startEvaluation();
+    var startEvaluationSteuerdaten = function() {
+        console.info('Start evaluation Steuerdaten ...');
+        var steueruebersicht = document.getElementById('steueruebersichtInputFile').files[0];
+
+        var configSteueruebersicht = {
+            delitmiter: ';',
+            skipEmptyLines: true,
+            quoteChar: '"',
+            escapeChar: '"',
+            worker: true,
+            complete: function(results, steueruebersicht) {
+                console.log("Parsing complete:", results, steueruebersicht);
+                parseSteueruebersicht(results);
+            }
+        }
+        var result = Papa.parse(steueruebersicht, configSteueruebersicht);
     }
 
     var GesamtAusschuettung = class {
@@ -107,7 +146,8 @@
             if (result.data[row] && result.data[row][7] && result.data[row][7] != "WKN") {
                 var steuerjahr = result.data[row][0];
                 var wkn = result.data[row][7];
-                var betrag = parseFloat(result.data[row][28].replace(',', '.'));
+                // var betrag = parseFloat(result.data[row][28].replace(',', '.'));
+                var betrag = toNumber(result.data[row][28]);
 
                 var ausschuettung = new Ausschuettung(steuerjahr, wkn, betrag);
                 // console.log(ausschuettung.toString());
@@ -148,14 +188,74 @@
         console.log('Steuerjahr: ' + key + ", Summe: " + value);
     }
 
-    var startResultEvaluation = function(result) {
+    var parseSteueruebersicht = function(result) {
         var wknMap = groupByWkn(result);
         // var wknValues = wknMap.values();
-        var wknValues = Array.from( wknMap.values() );
+        var wknValues = Array.from(wknMap.values());
         var sortedWkns = _.sortBy(wknValues, ['steuerjahr', 'betrag', 'wkn']);
         sortedWkns.forEach(printWkn);
 
+        if (typeof(Storage) !== "undefined") {
+            sortedWkns.forEach((value, key, map) => {
+                localStorage.setItem(value.key(), value.betrag);
+            });
+        } else {
+            console.error('Sorry! No Web Storage support..');
+        }
+
         var summenMap = sumUpAgeGroup(wknMap);
         summenMap.forEach(printIncome);
+    }
+
+    var Wertpapier = class {
+        constructor(wkn, anzahl, wert) {
+            this.wkn = wkn;
+            this.anzahl = anzahl;
+            this.wert = wert;
+        }
+
+        key() {
+            return this.wkn;
+        }
+
+        toString() {
+            return this.wkn + '#' + this.anzahl + '$' + this.wert;
+        }
+    }
+
+    var parseDepotuebersicht = function(result) {
+        var wknMap = new Map();
+
+        for (var row = 0; row < result.data.length; row++) {
+            if (result.data[row] && result.data[row][15] && result.data[row][15] != "WKN") {
+                var wkn = result.data[row][15];
+
+                var anzahl = parseFloat(result.data[row][0]);
+
+                var wertAsString = result.data[row][3];
+                var wert = toNumber(wertAsString);
+                /*
+                if (result.data[row][3].indexof(',') === -1) {
+                    wert = parseFloat(result.data[row][3].replace(',', '.'));
+                }
+                */
+
+                var wertpapier = new Wertpapier(wkn, anzahl, wert); 
+                console.log(wertpapier.toString());
+
+                wknMap.set(wertpapier.key(), wertpapier);
+            }
+        } 
+
+        var wknValues = Array.from(wknMap.values());
+        var sortedWkns = _.sortBy(wknValues, ['wert']);
+
+        if (typeof(Storage) !== "undefined") {
+            sortedWkns.forEach((value, key, map) => {
+                localStorage.setItem(value.key(), value.wert);
+            });
+        } else {
+            console.error('Sorry! No Web Storage support..');
+        }        
     }
 </script>
