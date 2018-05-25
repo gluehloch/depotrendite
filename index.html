@@ -46,6 +46,10 @@
                 <label for="startEvaluationSteuerdatenButton">Auswertung starten</label>
                 <button type="button" class="btn btn-primary" id="startEvaluationSteuerdatenButton">Steuerdaten importieren</button>
             </div>
+            <hr />
+            <div class="form-group">
+                <button type="button" class="btn btn-primary" id="calculateRenditeButton">Rendite berechnen</button>
+            </div<
         </form>
     </div>
 </body>
@@ -65,6 +69,11 @@
     var startEvaluationDepotdatenButton = document.getElementById('startEvaluationDepotdatenButton');
     startEvaluationDepotdatenButton.onclick = function() {
         startEvaluationDepotdaten();
+    }
+
+    var calculateRenditeButton = document.getElementById('calculateRenditeButton');
+    calculateRenditeButton.onclick = function() {
+        calculateRendite();
     }
 
     var startEvaluationDepotdaten = function() {
@@ -258,4 +267,31 @@
             console.error('Sorry! No Web Storage support..');
         }        
     }
+
+    var calculateRendite = function() {
+        var wknMap = new Map();
+        var wknErtragMap = new Map();
+
+        for (var i = 0, len = localStorage.length; i < len; ++i) {
+            var key = localStorage.key(i);
+            if (key.indexOf('/') === -1) {
+                wknMap.set(key, localStorage.getItem(key));
+            } else {
+                var split = key.split('/');
+                var steuerjahr = split[0];
+                var wkn = split[1];
+                if (steuerjahr == '2018') {
+                    wknErtragMap.set(wkn, localStorage.getItem(key));
+                }
+            }
+            console.log(key);
+            // console.log(localStorage.getItem(key));
+        }
+
+        wknMap.forEach((value, key, map) => {
+            var income = wknErtragMap.get(key);
+            console.log('WKN: ' + key + ', Wert: ' + value + ', Ertrag: ' + income + ', Rendite=' + income/value * 100);
+        });
+    }
+
 </script>
